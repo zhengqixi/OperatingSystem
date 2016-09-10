@@ -6,7 +6,7 @@
 #include<string.h>
 
 void errorReport(char* action, char* why, char* object){
-    printf("Error trying to %s %s for %s:\n%s", action, object, why, strerror(errno)); 
+    printf("Error trying to %s %s %s:\n%s", action, object, why, strerror(errno)); 
 }
 
 int main(int argc, char *argv[]){
@@ -21,7 +21,8 @@ int main(int argc, char *argv[]){
             ++i;
             outputFile = open(argv[i], O_WRONLY | O_TRUNC | O_CREAT, 00700);
             if (outputFile < 0) {
-                errorReport("open", "writing", argv[i]);
+                errorReport("open", " for writing", argv[i]);
+                return -1;
             }
         } else {
             break;
@@ -33,17 +34,21 @@ int main(int argc, char *argv[]){
         int readFile;
         readFile = open(argv[i], O_RDONLY); 
         if (readFile < 0) {
-            printf("Error trying to open %s for reading:\n %s \n", argv[i], strerror(errno));
+            errorReport("open", "for reading", argv[i]);
             return -1;
         } else {
             int amountRead = 1;
             while (amountRead != 0) {
                 amountRead = read(readFile, buffer, bufferSize); 
                 if (amountRead < 0) {
-                    printf("Error trying to read %s:\n%s", argv[i], strerror(errno));
+                    errorReport("read", 0, argv[i]);
                     return -1;
                 }
                 int amountWrote = write(outputFile, buffer, amountRead);
+                if (amountWrote < 0) {
+                    errorReport("write to", 0, argv[i]);
+                    return -1;
+                }
             }
         }
         ++i;
