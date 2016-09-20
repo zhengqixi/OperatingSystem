@@ -24,7 +24,9 @@ int writeToFile(int readFile, int outputFile, char * buffer, int bufferSize, cha
                 errorReport("write to", 0, fileName);
                 return -1;
             }
-            buffer += amountWrote/sizeof(char);
+            //Accounting for partial writes. This should work........
+            //Just keep writing until everything is written
+            buffer += amountWrote;
             amountRead -= amountWrote;
             amountWrote = write(outputFile, buffer, amountRead);
         }
@@ -63,16 +65,18 @@ int main(int argc, char *argv[]){
 
     while ( optind < argc) {
         int readFile;
+        char * fileName = "Standard Input";
         if (strcmp(argv[optind], "-") == 0) {
             readFile = STDIN_FILENO;
         } else {
             readFile = open(argv[optind], O_RDONLY); 
+            fileName = argv[optind]; 
         }
         if (readFile < 0) {
-            errorReport("open", "for reading", argv[optind]);
+            errorReport("open", "for reading", fileName);
             return -1;
         } else {
-            if (writeToFile(readFile, outputFile, buffer, bufferSize, argv[optind]) == -1)
+            if (writeToFile(readFile, outputFile, buffer, bufferSize, fileName) == -1)
                 return -1;
         }
         ++optind;
