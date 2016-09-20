@@ -9,6 +9,27 @@ void errorReport(char* action, char* why, char* object){
     printf("Error trying to %s %s %s:\n%s", action, object, why, strerror(errno)); 
 }
 
+int writeToFile(int readFile, int outputFile, char * buffer, int bufferSize, char * fileName) {
+    int amountRead = 1;
+    while (amountRead != 0) {
+        amountRead = read(readFile, buffer, bufferSize); 
+        if (amountRead < 0) {
+            errorReport("read", 0, fileName);
+            return -1;
+        }
+        int amountWrote = write(outputFile, buffer, amountRead);
+        while(amountWrote < amountRead) {
+            if (amountWrote < 0) {
+                errorReport("write to", 0, fileName);
+                return -1;
+            }
+            buffer += amountWrote/sizeof(char);
+            amountRead -= amountWrote;
+            amountWrote = write(outputFile, buffer, amountRead);
+        }
+    }
+}
+
 int main(int argc, char *argv[]){
     int bufferSize = 256;
     int outputFile = STDOUT_FILENO;
@@ -30,6 +51,10 @@ int main(int argc, char *argv[]){
     }
 
     char buffer[bufferSize];
+
+    if ( i >= argc) 
+        return writeToFile(STDIN_FILENO, outputFile, buffer, bufferSize, "Standard Input");
+
     while ( i < argc) {
         int readFile;
         if (strcmp(argv[i], "-") == 0) {
@@ -41,25 +66,8 @@ int main(int argc, char *argv[]){
             errorReport("open", "for reading", argv[i]);
             return -1;
         } else {
-            int amountRead = 1;
-            while (amountRead != 0) {
-                amountRead = read(readFile, buffer, bufferSize); 
-                if (amountRead < 0) {
-                    errorReport("read", 0, argv[i]);
-                    return -1;
-                }
-                int amountWrote = write(outputFile, buffer, amountRead);
-                char * outputTemp = buffer;
-                while(amountWrote < amountRead) {
-                    if (amountWrote < 0) {
-                        errorReport("write to", 0, argv[i]);
-                        return -1;
-                    }
-                    outputTemp += amountWrote/sizeof(char);
-                    amountRead -= amountWrote;
-                    amountWrote = write(outputFile, outputTemp, amountRead);
-                }
-            }
+            if (writeToFile(readFile, outputFile, buffer, bufferSize, argv[i]) == -1)
+                return -1;
         }
         ++i;
     }
