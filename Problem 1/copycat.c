@@ -32,7 +32,11 @@ int main(int argc, char *argv[]){
     char buffer[bufferSize];
     while ( i < argc) {
         int readFile;
-        readFile = open(argv[i], O_RDONLY); 
+        if (strcmp(argv[i], "-") == 0) {
+            readFile = STDIN_FILENO;
+        } else {
+            readFile = open(argv[i], O_RDONLY); 
+        }
         if (readFile < 0) {
             errorReport("open", "for reading", argv[i]);
             return -1;
@@ -45,9 +49,15 @@ int main(int argc, char *argv[]){
                     return -1;
                 }
                 int amountWrote = write(outputFile, buffer, amountRead);
-                if (amountWrote < 0) {
-                    errorReport("write to", 0, argv[i]);
-                    return -1;
+                char * outputTemp = buffer;
+                while(amountWrote < amountRead) {
+                    if (amountWrote < 0) {
+                        errorReport("write to", 0, argv[i]);
+                        return -1;
+                    }
+                    outputTemp += amountWrote/sizeof(char);
+                    amountRead -= amountWrote;
+                    amountWrote = write(outputFile, outputTemp, amountRead);
                 }
             }
         }
