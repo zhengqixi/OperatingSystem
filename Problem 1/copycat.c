@@ -7,7 +7,7 @@
 #include<unistd.h>
 
 void errorReport(char* action, char* why, char* object){
-    printf("Error trying to %s %s %s:\n%s", action, object, why, strerror(errno)); 
+    printf("Error trying to %s %s %s:\n%s\n", action, object, why, strerror(errno)); 
 }
 
 int writeToFile(int readFile, int outputFile, char * buffer, int bufferSize, char * fileName) {
@@ -34,24 +34,6 @@ int writeToFile(int readFile, int outputFile, char * buffer, int bufferSize, cha
 int main(int argc, char *argv[]){
     int bufferSize = 256;
     int outputFile = STDOUT_FILENO;
-    /*
-    int i;
-    for (i = 1; i < argc ; ++i) {
-        if (strcmp(argv[i], "-b") == 0) {
-            ++i;
-            bufferSize = atoi(argv[i]);
-        } else if (strcmp(argv[i], "-o") == 0){
-            ++i;
-            outputFile = open(argv[i], O_WRONLY | O_TRUNC | O_CREAT, 00700);
-            if (outputFile < 0) {
-                errorReport("open", " for writing", argv[i]);
-                return -1;
-            }
-        } else {
-            break;
-        }
-    }
-    */
 
     extern char *optarg;
     extern int optind;
@@ -68,6 +50,9 @@ int main(int argc, char *argv[]){
                     return -1;
                 }
                 break;
+            case '?':
+                printf("usage: copycat [-b ###] [-o outfile] infile [...infile2....] \n");
+                return -1;
         }
     }
 
