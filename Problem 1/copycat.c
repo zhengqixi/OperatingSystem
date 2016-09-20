@@ -4,6 +4,7 @@
 #include<fcntl.h>
 #include<errno.h>
 #include<string.h>
+#include<unistd.h>
 
 void errorReport(char* action, char* why, char* object){
     printf("Error trying to %s %s %s:\n%s", action, object, why, strerror(errno)); 
@@ -33,6 +34,7 @@ int writeToFile(int readFile, int outputFile, char * buffer, int bufferSize, cha
 int main(int argc, char *argv[]){
     int bufferSize = 256;
     int outputFile = STDOUT_FILENO;
+    /*
     int i;
     for (i = 1; i < argc ; ++i) {
         if (strcmp(argv[i], "-b") == 0) {
@@ -49,27 +51,46 @@ int main(int argc, char *argv[]){
             break;
         }
     }
+    */
+
+    extern char *optarg;
+    extern int optind;
+    int c;
+    while ( (c = getopt(argc, argv, "b:o:")) != -1) {
+        switch(c) {
+            case 'b':
+                bufferSize = atoi(optarg);
+                break;
+            case 'o':
+                outputFile = open(optarg, O_WRONLY | O_TRUNC | O_CREAT, 00700);
+                if (outputFile < 0) {
+                    errorReport("open", " for writing", optarg);
+                    return -1;
+                }
+                break;
+        }
+    }
 
     char buffer[bufferSize];
 
-    if ( i >= argc) 
+    if ( optind  >= argc) 
         return writeToFile(STDIN_FILENO, outputFile, buffer, bufferSize, "Standard Input");
 
-    while ( i < argc) {
+    while ( optind < argc) {
         int readFile;
-        if (strcmp(argv[i], "-") == 0) {
+        if (strcmp(argv[optind], "-") == 0) {
             readFile = STDIN_FILENO;
         } else {
-            readFile = open(argv[i], O_RDONLY); 
+            readFile = open(argv[optind], O_RDONLY); 
         }
         if (readFile < 0) {
-            errorReport("open", "for reading", argv[i]);
+            errorReport("open", "for reading", argv[optind]);
             return -1;
         } else {
-            if (writeToFile(readFile, outputFile, buffer, bufferSize, argv[i]) == -1)
+            if (writeToFile(readFile, outputFile, buffer, bufferSize, argv[optind]) == -1)
                 return -1;
         }
-        ++i;
+        ++optind;
     }
 
 
