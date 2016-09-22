@@ -36,6 +36,7 @@ int writeToFile(int readFile, int outputFile, char * buffer, int bufferSize, cha
 int main(int argc, char *argv[]){
     int bufferSize = 256;
     int outputFile = STDOUT_FILENO;
+    char * outputFileName;
 
     extern char *optarg;
     extern int optind;
@@ -51,6 +52,7 @@ int main(int argc, char *argv[]){
                     errorReport("open", " for writing", optarg);
                     return -1;
                 }
+                outputFileName = optarg;
                 break;
             case '?':
                 printf("usage: copycat [-b ###] [-o outfile] infile [...infile2....] \n");
@@ -79,7 +81,21 @@ int main(int argc, char *argv[]){
             if (writeToFile(readFile, outputFile, buffer, bufferSize, fileName) == -1)
                 return -1;
         }
+        if (readFile != STDIN_FILENO) {
+            int closed = close(readFile);
+            if (closed < 0) {
+                errorReport("close", "", fileName);
+                return -1;
+            }
+        }
         ++optind;
+    }
+
+    if (outputFile != STDOUT_FILENO) {
+        int closed = close(outputFile);
+        if (closed < 0) {
+            errorReport("close", "", outputFileName); 
+        }
     }
 
 
