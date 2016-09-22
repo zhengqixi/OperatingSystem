@@ -2,7 +2,7 @@ from subprocess import run
 from time import time
 from matplotlib import pyplot
 
-testFile = r"SubmissionStuff/10.txt"
+testFile = r"SubmissionStuff/KingJamesBible"
 byteSize = [2 ** x for x in range(8,32)]
 incrementalSize = [10 * x for x in range(25,25+len(byteSize))]
 testTime = []
