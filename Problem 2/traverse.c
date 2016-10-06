@@ -10,22 +10,63 @@
 #include<pwd.h>
 
 char *beginning;
+
 int use_id;
+
 int use_time;
+
 int stay_in_mount;
+
 int strict_symlink;
+char * target_path;
+dev_t target_device;
+ino_t target_inode;
 
 dev_t current_device;
 uid_t user_id;
 time_t time_range;
 
 void errorReport(char * message){
-    fprintf(stderr, "Error %s %s: %s", message, beginning, strerror(errno));
+    fprintf(stderr, "Error %s %s: %s\n", message, beginning, strerror(errno));
     errno = 0;
     return;
 }
 
-void printStat(struct stat *data) {
+char* symResolve(struct stat * data, char * extend) {
+    char * link = (char*)malloc(data->st_size * sizeof(char) + 1);
+    int success = readlink(beginning, link, data->st_size); 
+    if (success == -1) {
+        errorReport("reading symbolic link");
+        if (strict_symlink) { 
+            free(link);
+            return NULL;
+        }
+        link = realloc(link, 50);
+        if (link == NULL){
+            errorReport("allocating memory at");
+            exit(-1);
+        }
+        strcpy(link, "Cannot resolve symlink");
+    } else {
+        link[data->st_size] = '\0';
+        if (strict_symlink){
+            struct stat buf;
+            (*extend) = '/';
+            strcpy(extend + 1, link);
+            int open = lstat(beginning, &buf);
+            if (open != 0) {
+                (*extend) = '\0';
+                free(link);
+                return NULL;
+            }
+            (*extend) = '\0';
+            return (target_device == buf.st_dev & target_inode == buf.st_ino)? link : NULL;
+        }
+    }
+    return link;
+}
+
+void printStat(struct stat *data, char * extend) {
 
     if (use_id != 0 && user_id != data->st_uid)
         return;
@@ -51,31 +92,8 @@ void printStat(struct stat *data) {
 
     char * link_path;
     if (type == 'l'){
-        link_path = (char*)malloc(data->st_size * sizeof(char) + 1);
-        int success = readlink(beginning, link_path, data->st_size); 
-        if (success == -1) {
-            errorReport("reading symbolic link");
-            if (strict_symlink == 1) { 
-                free(link_path);
-                return;
-            }
-            link_path = realloc(link_path, 50);
-            if (link_path == NULL){
-                errorReport("at");
-                return;
-            }
-            strcpy(link_path, "Cannot resolve symlink");
-        } else {
-            link_path[data->st_size] = '\0';
-            if (strict_symlink == 1 && (success = open(link_path, O_RDONLY)) < 0){
-                free(link_path);
-                return;
-            }
-            if ( (success = close(success)) == -1){
-                errorReport("at");
-                free(link_path);
-                return;
-            }
+        if ( (link_path = symResolve(data, extend)) == NULL){
+            return;
         }
     }
 
@@ -92,8 +110,8 @@ void printStat(struct stat *data) {
         '\0'
     };
     printf("%lu/%lu %s %lu %s", data->st_dev, data->st_ino, permissions, data->st_nlink, beginning);
-    if (type = 'l'){
-        printf("->%s", link_path);
+    if (type == 'l'){
+        printf("->%s\n", link_path);
         free(link_path);
     } else {
         printf("\n");
@@ -107,10 +125,10 @@ void recursiveTraverse(char *extend) {
     DIR *directory = opendir(beginning);
     if(directory == NULL) {
         if(errno == EACCES) {
-            errorReport("opening");
+            errorReport("opening directory");
             return;
         }
-        errorReport("opening");
+        errorReport("opening directory");
         exit(-1);
     }
     struct dirent *files;
@@ -123,12 +141,12 @@ void recursiveTraverse(char *extend) {
         (*extend) = '/';
 
         struct stat buf;
-        int open = stat(beginning, &buf);
+        int open = lstat(beginning, &buf);
         if(open != 0) {
-            errorReport("reading");
+            errorReport("reading file metadata");
             continue;
         }
-
+        printStat(&buf, extend);
         if(files->d_type == DT_DIR) {
             if(stay_in_mount == 1 && (current_device != buf.st_dev)) {
                 fprintf(stderr, "note: not crossing mount point at: %s\n", beginning);
@@ -136,8 +154,6 @@ void recursiveTraverse(char *extend) {
             }
             int length = strlen(files->d_name);
             recursiveTraverse(extend + length + 1);
-        } else {
-            printStat(&buf);
         }
 
     }
@@ -149,8 +165,8 @@ void recursiveTraverse(char *extend) {
         errorReport("closing");
         exit(-1);
     }
-    (*extend) = 0;
-
+    (*extend) = '\0';
+    return;
 }
 
 int main(int argc, char *argv[]) {
@@ -171,22 +187,37 @@ int main(int argc, char *argv[]) {
                 break;
             case 'l':
                 strict_symlink = 1;
+                target_path = optarg;
                 break;
         }
     }
+
     if(optind >= argc) {
         fprintf(stderr, "Usage: traverse [-u] [-m] [-x] [-l] directory_path\n");
         return 0;
     }
+
     if(stay_in_mount) {
         struct stat buf;
-        int open = stat(argv[optind], &buf);
+        int open = lstat(argv[optind], &buf);
         if(open != 0) {
             fprintf(stderr, "Error attemping to open directory %s: %s\n", argv[optind], strerror(errno));
             return -1;
         }
         current_device = buf.st_dev;
     }
+
+    if (strict_symlink){
+        struct stat buf;
+        int open = lstat(target_path, &buf);
+        if(open != 0) {
+            fprintf(stderr, "Error attemping to file %s: %s\n", argv[optind], strerror(errno));
+            return -1;
+        }
+        target_device = buf.st_dev;
+        target_inode = buf.st_ino;
+    }
+
     beginning = (char *) malloc(sizeof(char) * 64 * 1024);
     strcpy(beginning, argv[optind]);
     int length = strlen(beginning);
