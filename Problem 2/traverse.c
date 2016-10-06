@@ -8,23 +8,23 @@
 #include<dirent.h>
 #include<fcntl.h>
 #include<pwd.h>
+#include<time.h>
 
 char *beginning;
 
 int use_id;
+uid_t user_id;
 
 int use_time;
-
-int stay_in_mount;
+double time_range;
+time_t current_time;
 
 int strict_symlink;
-char * target_path;
 dev_t target_device;
 ino_t target_inode;
 
+int stay_in_mount;
 dev_t current_device;
-uid_t user_id;
-time_t time_range;
 
 void errorReport(char * message){
     fprintf(stderr, "Error %s %s: %s\n", message, beginning, strerror(errno));
@@ -71,6 +71,14 @@ void printStat(struct stat *data, char * extend) {
     if (use_id != 0 && user_id != data->st_uid)
         return;
 
+    if (use_time){
+        double time_difference = difftime(current_time, data->st_mtim.tv_sec);
+        if (time_range > 0 && time_difference < time_range)
+            return;
+        if (time_range < 0 && time_difference > (-1 * time_range))
+            return;
+    }
+
     char type = '-';
     switch (data->st_mode & S_IFMT) {
         case (S_IFDIR):
@@ -109,9 +117,11 @@ void printStat(struct stat *data, char * extend) {
         (data->st_mode & S_IXOTH) ? 'x' : '-', 
         '\0'
     };
-    printf("%lu/%lu %s %lu %s", data->st_dev, data->st_ino, permissions, data->st_nlink, beginning);
+    char date[256];
+    strftime(date, 256, "%D %T", localtime(&data->st_mtim.tv_sec));
+    printf("%lu/%lu %s %lu %lu %s %s", data->st_dev, data->st_ino, permissions, data->st_nlink, data->st_size, date, beginning);
     if (type == 'l'){
-        printf("->%s\n", link_path);
+        printf(" -> %s\n", link_path);
         free(link_path);
     } else {
         printf("\n");
@@ -171,6 +181,7 @@ void recursiveTraverse(char *extend) {
 
 int main(int argc, char *argv[]) {
     use_id = use_time = stay_in_mount = strict_symlink = 0;
+    char *target_path, *time_string, *user_name;
     extern char *optarg;
     extern int optind;
     int c;
@@ -178,9 +189,11 @@ int main(int argc, char *argv[]) {
         switch (c) {
             case 'u':
                 use_id = 1;
+                user_name = optarg;
                 break;
             case 'm':
                 use_time = 1;
+                time_string = optarg;
                 break;
             case 'x':
                 stay_in_mount = 1;
@@ -189,12 +202,21 @@ int main(int argc, char *argv[]) {
                 strict_symlink = 1;
                 target_path = optarg;
                 break;
+            case '?':
+                fprintf(stderr, "Usage: traverse [-u] [-m] [-x] [-l] directory_path\n");
+                return 0;
         }
     }
 
     if(optind >= argc) {
         fprintf(stderr, "Usage: traverse [-u] [-m] [-x] [-l] directory_path\n");
         return 0;
+    }
+
+    if (use_time){
+        current_time = time(NULL); 
+        time_range = strtod(time_string, NULL);
+        
     }
 
     if(stay_in_mount) {
