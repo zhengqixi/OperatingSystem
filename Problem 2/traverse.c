@@ -134,6 +134,7 @@ void printStat(struct stat *data, char * extend) {
     }
 
     printf("%lu/%lu %s %lu %s %s %lu %s %s", data->st_dev, data->st_ino, permissions, data->st_nlink, user_info->pw_name, group_info->gr_name, data->st_size, date, beginning);
+
     if (type == 'l'){
         printf(" -> %s\n", link_path);
         free(link_path);
@@ -157,12 +158,12 @@ void recursiveTraverse(char *extend) {
     }
     struct dirent *files;
     errno = 0;
+    (*extend) = '/';
     while((files = readdir(directory)) != NULL) {
         if(strcmp(".", files->d_name) == 0 || strcmp("..", files->d_name) == 0) {
             continue;
         }
         strcpy(extend + 1, files->d_name);
-        (*extend) = '/';
 
         struct stat buf;
         int open = lstat(beginning, &buf);
