@@ -9,6 +9,7 @@
 #include<fcntl.h>
 #include<pwd.h>
 #include<time.h>
+#include<grp.h>
 
 char *beginning;
 
@@ -119,7 +120,20 @@ void printStat(struct stat *data, char * extend) {
     };
     char date[256];
     strftime(date, 256, "%D %T", localtime(&data->st_mtim.tv_sec));
-    printf("%lu/%lu %s %lu %lu %s %s", data->st_dev, data->st_ino, permissions, data->st_nlink, data->st_size, date, beginning);
+
+    struct passwd * user_info;
+    struct group * group_info;
+    user_info = getpwuid(data->st_uid);
+    group_info = getgrgid(data->st_gid);
+    if (user_info == NULL || group_info == NULL){
+        errorReport("cannot obtain user info");
+        if (link_path != NULL){
+            free(link_path);
+        }
+        return;
+    }
+
+    printf("%lu/%lu %s %lu %s %s %lu %s %s", data->st_dev, data->st_ino, permissions, data->st_nlink, user_info->pw_name, group_info->gr_name, data->st_size, date, beginning);
     if (type == 'l'){
         printf(" -> %s\n", link_path);
         free(link_path);
@@ -227,6 +241,20 @@ int main(int argc, char *argv[]) {
             return -1;
         }
         current_device = buf.st_dev;
+    }
+
+    if (use_id) {
+        char * check;
+        user_id = strtoll(user_name, &check, 10);        
+        if ((*check) != '\0') {
+            struct passwd * user_info = getpwnam(user_name);                
+            if (user_info == NULL){
+                errorReport("cannot retrieve user information"); 
+                return -1;
+            }
+            user_id = user_info->pw_uid; 
+        }
+
     }
 
     if (strict_symlink){
