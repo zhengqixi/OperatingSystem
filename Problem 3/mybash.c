@@ -15,17 +15,40 @@ void errorReport(char * error_message){
     exit(-1);
 }
 
+void redirect(char ** command){
+    while ((*command) != NULL){
+        char * value;
+        if ( (value = strpbrk((*command), "<>")) == NULL)
+            continue;
+        if ( (*value) == '<'){
+            value++;
+            int fd = open(value, O_RDONLY);    
+            if (fd < 0){
+                errorReport("Unable to redirect stdin");
+            }
+            int success = dup2(); //TODO, FIGURE OUT DUP2
+            if (success < 0){
+                errorReport("Unable to redirect stdin");
+            }
+        } else {
+        }
+        (*command) = NULL;
+        ++command;
+    }
+    
+}
+
 void runCommand(char ** command){
     pid_t process = fork(); 
     if (process == 0){
+        redirect(command);
         int status = execvp(command[0], command); 
-        if (status < 0){
+        if (status < 0)
             errorReport("Error executing command");
-        }
     } else {
         int return_status;
         waitpid(process, &return_status, 0);
-        printf("Exit status of process: %d\n", WEXITSTATUS(return_status));
+        fprintf(stderr, "Exit status of process: %d\n", WEXITSTATUS(return_status));
     }
     
 }
