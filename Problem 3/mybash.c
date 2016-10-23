@@ -6,6 +6,7 @@
 #include<sys/types.h>
 #include<sys/wait.h>
 #include<time.h>
+#include<fcntl.h>
 
 #define ARG_MAX 4096
 
@@ -18,24 +19,59 @@ void errorReport(char * error_message){
 void redirect(char ** command){
     while ((*command) != NULL){
         char * value;
-        if ( (value = strpbrk((*command), "<>")) == NULL)
+        if ( (value = strpbrk((*command), "<>")) == NULL){
+            ++command;
             continue;
+        }
         if ( (*value) == '<'){
+            int pre_length;
+            if  ((pre_length = strcspn((*command), "<")) > 1){
+                errorReport("Invalid redirection syntax");
+            }
             value++;
             int fd = open(value, O_RDONLY);    
             if (fd < 0){
                 errorReport("Unable to redirect stdin");
             }
-            int success = dup2(); //TODO, FIGURE OUT DUP2
+            int success = dup2(fd, STDIN_FILENO);
             if (success < 0){
                 errorReport("Unable to redirect stdin");
             }
         } else {
+            int redirect_stream = STDOUT_FILENO;
+
+            int pre_length;
+            if ( (pre_length = strcspn((*command), ">")) > 2){ 
+                errorReport("Invalid redirection syntax");
+            } else if (pre_length == 2){
+                if ((*command)[0] == '2'){
+                    redirect_stream = STDERR_FILENO;
+                } else {
+                    errorReport("Invalid redirection syntax");
+                }
+            }
+            
+            unsigned int flags = O_CREAT | O_WRONLY; 
+            ++value;
+            if ((*value) == '>'){
+                ++value;
+                flags = flags | O_APPEND;
+            } else {
+                flags = flags | O_TRUNC; 
+            }
+
+            int fd = open(value, flags, S_IRWXU);
+            if (fd < 0){
+                errorReport("Unable to redirect");
+            }
+            int success = dup2(fd, redirect_stream);
+            if (success < 0){
+                errorReport("Unable to redirect");
+            }
         }
         (*command) = NULL;
         ++command;
     }
-    
 }
 
 void runCommand(char ** command){
