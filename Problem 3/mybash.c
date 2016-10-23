@@ -25,7 +25,7 @@ void redirect(char ** command){
         }
         if ( (*value) == '<'){
             int pre_length;
-            if  ((pre_length = strcspn((*command), "<")) > 1){
+            if  ((pre_length = strcspn((*command), "<")) > 0){
                 errorReport("Invalid redirection syntax");
             }
             value++;
@@ -41,9 +41,9 @@ void redirect(char ** command){
             int redirect_stream = STDOUT_FILENO;
 
             int pre_length;
-            if ( (pre_length = strcspn((*command), ">")) > 2){ 
+            if ( (pre_length = strcspn((*command), ">")) > 1){ 
                 errorReport("Invalid redirection syntax");
-            } else if (pre_length == 2){
+            } else if (pre_length == 1){
                 if ((*command)[0] == '2'){
                     redirect_stream = STDERR_FILENO;
                 } else {
