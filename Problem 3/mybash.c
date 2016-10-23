@@ -107,6 +107,9 @@ int main(int argc, char* argv[]) {
             if (feof(stream)){
                 return 0;
             }
+            if (current == EOF){
+                return 0;
+            }
             command_line[i] = current;
             ++i;
         }
