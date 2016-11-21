@@ -6,10 +6,19 @@
 #include<sys/types.h>
 #include<sys/stat.h>
 #include<sys/mman.h>
+#include<signal.h>
+#include<setjmp.h>
 
 int return_value;
+jmp_buf jumper;
+
+void signal_handler(int signal){
+    return_value = -1;
+    longjmp(jumper, 1);
+}
 
 int main(int argc, char ** argv){
+    signal(SIGBUS, signal_handler);
     return_value = 1;
     extern char *optarg;
     extern int optind;
@@ -54,6 +63,10 @@ int main(int argc, char ** argv){
     }
 
     while (optind < argc){
+        if (setjmp(jumper) == 1){
+            ++optind;
+            continue;
+        }
         int fd = open(argv[optind], O_RDONLY);
         if (fd < 0) {
             perror("Failed to open file for matching");
@@ -71,10 +84,12 @@ int main(int argc, char ** argv){
         while(length_remain > 0) {
             if (memcmp(pattern, file_compare, pattern_length) == 0){
                 return_value = 0;                
+                printf("%s:%d \n", argv[optind], file_length - length_remain);
             }
             ++file_compare;
             --length_remain;
         }
         ++optind;
     }
+    return return_value;
 }
