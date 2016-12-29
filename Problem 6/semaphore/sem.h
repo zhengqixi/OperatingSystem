@@ -2,6 +2,11 @@
 #define SEM_H
 #define N_PROC 64
 #include<unistd.h>
+#include<signal.h>
+
+pid_t sys_procnum;
+pid_t my_procnum;
+
 
 struct sem{
     int count;

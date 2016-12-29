@@ -1,10 +1,4 @@
-test: test.o sem.o tas64.o
-	gcc -o test test.o sem.o tas64.o
-
-sem.o: sem.c sem.h
-	gcc -c sem.c sem.h
-
-tas64.o: ../tas64.S ../tas.h
-	gcc -c ../tas64.S ../tas.h
+test: test.c sem.c sem.h ../tas.h ../tas64.S
+	gcc -g -o test test.c sem.c sem.h ../tas.h ../tas64.S
 clean:
 	rm *.gch *.o
