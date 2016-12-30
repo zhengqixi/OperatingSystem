@@ -8,7 +8,6 @@
 
 
 void empty_handler(int sig){
-    printf("FUCK GOD\n");
 }
 
 void sem_init(struct sem* s, int count){
@@ -41,7 +40,6 @@ int sem_try(struct sem* s){
 void sem_wait(struct sem* s){
     lock:
     while (tas(&s->lock) != 0){
-        printf("Process %lu is suspending \n", sys_procnum);
         s->wait_queue[my_procnum] = sys_procnum;
         sigset_t normal;
         sigemptyset(&normal);

@@ -14,15 +14,12 @@ int main(char ** argv, int argc){
     fifo_init(test);
     printf("fifo intialized\n");
     pid_t process;
-    int num_process = N_PROC;
     my_procnum = 1;
     while (my_procnum < N_PROC){
-        switch( (process=fork())){
-            case 0:
-                writer(test);
-            default:
-                break;
-        }
+        process = fork();
+        if (process == 0){
+            writer(test);
+        } 
         ++my_procnum;
     }
     reader(test);
@@ -35,21 +32,25 @@ void writer(struct fifo* write){
     for (i = 0; i < TO_WRITE; ++i){
         fifo_wr(write, my_procnum);
     }
+    printf("Done writing - %lu\n", sys_procnum);
     exit(0);
 }
 
 void reader(struct fifo* read){
     sys_procnum = getpid();
+    printf("Reader at process %lu \n", sys_procnum);
     my_procnum = 0;
     int total_read = 0;
     int target = (N_PROC-1) * TO_WRITE;
     int value[N_PROC];
+    int i;
+    for (i = 0; i < N_PROC; ++i)
+        value[i] = 0;
     while (total_read < target){
         unsigned long data = fifo_rd(read);
         ++value[data];
         ++total_read;
     }
-    int i;
     for(i = 0; i < N_PROC; ++i)
         printf("Value of data read from process %d: %d\n", i, value[i]); 
 
