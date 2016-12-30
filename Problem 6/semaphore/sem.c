@@ -1,14 +1,14 @@
-#include"sem.h"
-#include"../tas.h"
-#include"../nproc.h"
 #include<unistd.h>
 #include<sys/types.h>
 #include<signal.h>
 #include<stdio.h>
+#include<stdlib.h>
+#include"sem.h"
+#include"../tas.h"
+#include"../nproc.h"
 
-
-void empty_handler(int sig){
-}
+void empty_handler(int sig){}
+void exit_with_error();
 
 void sem_init(struct sem* s, int count){
     s->count = count;
@@ -19,9 +19,19 @@ void sem_init(struct sem* s, int count){
         ++i;
     }
     sigset_t block;
-    sigemptyset(&block);
-    sigaddset(&block, SIGUSR1);
-    sigprocmask(SIG_BLOCK, &block, NULL);
+
+    if (sigemptyset(&block) == -1){
+        exit_with_error();
+    }
+
+    if (sigaddset(&block, SIGUSR1) == -1){
+        exit_with_error();
+    }
+
+    if (sigprocmask(SIG_BLOCK, &block, NULL) == -1){
+        exit_with_error();
+    }
+
     signal(SIGUSR1, empty_handler);
 }
 
@@ -42,7 +52,11 @@ void sem_wait(struct sem* s){
     while (tas(&s->lock) != 0){
         s->wait_queue[my_procnum] = sys_procnum;
         sigset_t normal;
-        sigemptyset(&normal);
+
+        if (sigemptyset(&normal) == -1){
+            exit_with_error();
+        }
+
         sigsuspend(&normal);
     }
     if (s->count == 0){
@@ -62,8 +76,14 @@ void sem_inc(struct sem* s){
     int i;
     for (i = 0; i < N_PROC; ++i){
         if (s->wait_queue[i] != -1){
-            kill(s->wait_queue[i], SIGUSR1);
+            if (kill(s->wait_queue[i], SIGUSR1) == -1)
+                perror("Error sending signal"); //No need to exit...
         }
     }
 
+}
+
+void exit_with_error(){
+    perror("Error in semaphores: ");
+    exit(-1);
 }
