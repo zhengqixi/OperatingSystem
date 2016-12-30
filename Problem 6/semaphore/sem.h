@@ -1,16 +1,10 @@
 #ifndef SEM_H
 #define SEM_H
-#define N_PROC 64
 #include<unistd.h>
-#include<signal.h>
-
-pid_t sys_procnum;
-pid_t my_procnum;
-
+#include"../nproc.h"
 
 struct sem{
-    int count;
-    int max_count;
+    unsigned int count;
     volatile char lock;
     pid_t wait_queue[N_PROC];
 };

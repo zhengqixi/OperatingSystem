@@ -1,4 +1,11 @@
-test: test.c sem.c sem.h ../tas.h ../tas64.S
-	gcc -g -o test test.c sem.c sem.h ../tas.h ../tas64.S
+test: test.c sem.o tas64.o
+	gcc -g -o test test.c sem.o tas64.o
+
+tas64.o: ../tas.h ../tas64.S
+	gcc -c ../tas.h ../tas64.S
+
+sem.o: sem.c sem.h ../nproc.h
+	gcc -c sem.c sem.h ../nproc.h
+
 clean:
 	rm *.gch *.o
